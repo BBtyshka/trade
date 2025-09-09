@@ -1,0 +1,111 @@
+
+from AlgoAPI import AlgoAPIUtil, AlgoAPI_Backtest
+import pandas as pd
+from datetime import datetime, timedelta
+import numpy as np
+
+class AlgoEvent:
+    def __init__(self):
+        self.lasttradetime = datetime(2000,1,1)
+        self.balance = 0
+        self.traintime = datetime(2021,1,1)
+        self.stock_one_prices = np.array([])
+        self.stock_two_prices = np.array([])
+        self.takeprofit = 5
+        
+        
+
+    def start(self, mEvt):
+        self.stock_x = mEvt['subscribeList'][0]
+        self.stock_y = mEvt['subscribeList'][1]
+        self.evt = AlgoAPI_Backtest.AlgoEvtHandler(self, mEvt)
+        self.evt.consoleLog(mEvt['subscribeList'])
+
+        self.evt.start()
+        
+
+    def on_bulkdatafeed(self, isSync, bd, ab):
+        if isSync:
+            if self.stock_x in bd and self.stock_y in bd:
+                #self.evt.consoleLog(bd)
+                self.balance = ab['availableBalance']
+                #self.evt.consoleLog(bd)
+                if bd[self.stock_x]['timestamp'] >= self.lasttradetime + timedelta(hours=24):
+                    self.lasttradetime = bd[self.stock_x]['timestamp']
+                    stockXprice = bd[self.stock_x]['lastPrice']
+                    stockYprice = bd[self.stock_y]['lastPrice']
+                    self.stock_one_prices = np.append(self.stock_one_prices, stockXprice)
+                    self.stock_two_prices = np.append(self.stock_two_prices, stockYprice)
+                    
+                    
+                    if self.lasttradetime > self.traintime:
+                        b = np.polyfit(self.stock_one_prices, self.stock_two_prices, 1)[0]
+                        spread = self.stock_one_prices - b * self.stock_two_prices
+                        
+                        zscore = (spread - spread.mean()) / spread.std()
+                        lastz = zscore[-1]
+                        
+                        if lastz>0:
+                            self.evt.consoleLog(f'Z value:{lastz}')
+                            #self.short(self.stock_one_prices)
+                            self.test_sendOrder(self.stock_x, stockXprice, -1, 'open', lastz/2)
+                            #self.long(self.stock_two_prices)
+                            self.test_sendOrder(self.stock_x, stockYprice, 1, 'open', lastz)
+                        elif lastz<0:
+                            self.evt.consoleLog(f'Z value:{lastz}')
+                            #self.short(self.stock_two_prices)
+                            self.test_sendOrder(self.stock_x, stockYprice, -1, 'open', lastz)
+                            #self.long(self.stock_one_prices)
+                            self.test_sendOrder(self.stock_x, stockXprice, 1, 'open', lastz/2)
+
+
+    def on_marketdatafeed(self, md, ab):
+        pass
+
+    def on_newsdatafeed(self, nd):
+        pass
+
+    def on_weatherdatafeed(self, wd):
+        pass
+    
+    def on_econsdatafeed(self, ed):
+        pass
+        
+    def on_corpAnnouncement(self, ca):
+        pass
+
+    def on_orderfeed(self, of):
+        pass
+
+    def on_dailyPLfeed(self, pl):
+        pass
+
+    def on_openPositionfeed(self, op, oo, uo):
+        pass
+    
+    
+    def long():
+        pass
+    
+    def short():
+        pass
+    
+    def test_sendOrder(self, instrument, lastprice, buysell, openclose, z):
+        order = AlgoAPIUtil.OrderObject()
+        order.instrument = instrument
+        order.orderRef = 1
+        
+        z = abs(z)
+        
+        if buysell==1:
+            order.takeProfitLevel = lastprice*1.1
+            order.stopLossLevel = lastprice*0.9
+        elif buysell==-1:
+            order.takeProfitLevel = lastprice*0.9
+            order.stopLossLevel = lastprice*1.1
+        
+        order.volume = z
+        order.openclose = openclose
+        order.buysell = buysell
+        order.ordertype = 0 #0=market_order, 1=limit_order, 2=stop_order
+        self.evt.sendOrder(order)
