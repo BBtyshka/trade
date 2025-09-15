@@ -1,8 +1,0 @@
-Developed frontend for a website and implemented simple backend for retrieving, checking(captcha) and storing emails in Google Sheets Database
-Used: ReactJS, Google Scripts, Google Sheets
-Worked on a news dashboard on news around the AI world. Worked with different apis to retrieve news from different sources which is then stored in a database. Developed a scheduler which automatically checks and deletes records older than a certain period. Helped with frontend of the website
-Used: News APIs, MongoDB
-Developed an algorithm which employed a team of AI agents to create an instagram post. This included creating the necessary tools which the agents could use and assigning their roles. In the end, the algorithm could autonomously create an image, caption to an instagram  post based on the website of a product. Additional notes could be inserted for better control and the theme of the photos and captions.
-Used: CrewAI, ImageGenerationAPIs, LLMs, beautifulSoup(for scraping websites)
-Developed tools for a telegram bot: Voice generation: the chatbot can be toggled to answer in text and in voice messages; Voice cloning: the bot can be trained and toggled to answer using the voice of a short voice message, used to make it sound like a celebrity speaking to the user; Added a calendar to the bot which can understand the sentiment of the user to store a certain event in their custom calendar, the bot does not need to be explicitly told to store or list the events, also functions like removing an event where added.
-Used: Voice generationAPIs, local TTS model training(coquiTTS), python telegram bot package, MongoDB
