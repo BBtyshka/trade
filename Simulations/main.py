@@ -21,11 +21,20 @@ def run_simulation_callback(sender, app_data, user_data):
     profit_series_id = user_data["profit_series_id"]
     profit_y_axis = user_data["profit_y_axis"]
     profit_x_axis = user_data["profit_x_axis"]
+
+    if user_data["short_window"] is not None and user_data["long_window"] is not None:
+        short_window = user_data["short_window"]
+        long_window = user_data["long_window"]
+    else:
+        short_window = 7 
+        long_window = 28 
+
     button_id = sender
 
-    n_steps = dpg.get_value(input_steps_id)
-    prices = brownian_prices(data_cache, n_steps)
-    profit, buy_idx, buy_prices, sell_idx, sell_prices = sma(prices, short_window=3, long_window=9)
+    temp = data_cache
+    n_steps = dpg.get_value(input_steps_id) + len(temp)
+    prices = np.append(temp, brownian_prices(temp, n_steps))
+    profit, buy_idx, buy_prices, sell_idx, sell_prices = sma(prices, short_window=short_window, long_window=long_window)
 
     dpg.set_value(line_series_id, [[], []])
     dpg.configure_item(button_id, enabled=False)
@@ -119,6 +128,12 @@ with dpg.window(label="Simulation", width=700, height=800):
     x_axis_path = dpg.add_plot_axis(dpg.mvXAxis, label="Step", parent=plot_path)
     y_axis_path = dpg.add_plot_axis(dpg.mvYAxis, label="Price", parent=plot_path)
     line_series_id = dpg.add_line_series([], [], label="Path", parent=y_axis_path)
+    
+    # Create theme for line color
+    with dpg.theme() as line_theme:
+        with dpg.theme_component(dpg.mvLineSeries):
+            dpg.add_theme_color(dpg.mvPlotCol_Line, (0, 255, 0), category=dpg.mvThemeCat_Plots)  # Green (R, G, B)
+    dpg.bind_item_theme(line_series_id, line_theme)
 
     # Disable auto-fit; we'll control limits
     dpg.configure_item(y_axis_path, auto_fit=False)
@@ -128,6 +143,11 @@ with dpg.window(label="Simulation", width=700, height=800):
     profit_x_axis = dpg.add_plot_axis(dpg.mvXAxis, label="Step", parent=profit_plot)
     profit_y_axis = dpg.add_plot_axis(dpg.mvYAxis, label="Profit", parent=profit_plot)
     profit_series_id = dpg.add_bar_series([], [], label="Profit", parent=profit_y_axis)
+
+    #CHange parameters for SMA
+    dpg.add_text("SMA Parameters")
+    input_short_window_id = dpg.add_input_int(label="Short Window", default_value=7, min_value=1, max_value=100)
+    input_long_window_id = dpg.add_input_int(label="Long Window", default_value=28, min_value=1, max_value=100)
 
     # Button: pass IDs via user_data
     dpg.add_button(
@@ -142,6 +162,8 @@ with dpg.window(label="Simulation", width=700, height=800):
             "profit_series_id": profit_series_id,
             "profit_y_axis": profit_y_axis,
             "profit_x_axis": profit_x_axis,
+            "short_window": input_short_window_id,
+            "long_window": input_long_window_id
         }
     )
 
