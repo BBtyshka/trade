@@ -1,17 +1,26 @@
 import dearpygui.dearpygui as dpg
 import numpy as np
-import yfinance as yf
-import pandas as pd
-from funcs import brownian_prices, sma  # ensure this is available
+import sys
+import os
+
+# Add parent directory to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from Simulations.objects import (
+    TradingEngine,
+    YFinanceDataSource,
+    SimulatedDataSource,
+    SMAStrategy
+)
+
+# Initialize Engine
+engine = TradingEngine()
+engine.set_data_source(YFinanceDataSource("MSFT", period="1y", interval="1h"))
+engine.add_strategy(SMAStrategy(short_window=3, long_window=9), name="SMA_Sim")
+engine.add_strategy(SMAStrategy(short_window=7, long_window=28), name="SMA_Historic")
 
 # Cache data once
-def getData():
-    ticker = yf.Ticker("MSFT")
-    df = pd.DataFrame(ticker.history(period="1y", interval="1h")).reset_index()
-    df["Mid"] = (df["High"] + df["Low"]) / 2
-    return np.array(df["Mid"])
-
-data_cache = getData()
+data_cache = engine.load_data()
 
 def run_simulation_callback(sender, app_data, user_data):
     input_steps_id = user_data["input_steps_id"]
@@ -21,20 +30,26 @@ def run_simulation_callback(sender, app_data, user_data):
     profit_series_id = user_data["profit_series_id"]
     profit_y_axis = user_data["profit_y_axis"]
     profit_x_axis = user_data["profit_x_axis"]
-
-    if user_data["short_window"] is not None and user_data["long_window"] is not None:
-        short_window = user_data["short_window"]
-        long_window = user_data["long_window"]
-    else:
-        short_window = 7 
-        long_window = 28 
-
     button_id = sender
 
-    temp = data_cache
-    n_steps = dpg.get_value(input_steps_id) + len(temp)
-    prices = np.append(temp, brownian_prices(temp, n_steps))
-    profit, buy_idx, buy_prices, sell_idx, sell_prices = sma(prices, short_window=short_window, long_window=long_window)
+    n_steps = dpg.get_value(input_steps_id)
+    
+    # Use the engine with SimulatedDataSource
+    sim_source = SimulatedDataSource(data_cache, n_steps)
+    prices = sim_source.fetch()
+    
+    # Run strategy using the engine
+    strategy = engine.get_strategy("SMA_Sim")
+    result = strategy.run(prices) if strategy else None
+    if result is None:
+        return
+
+    print(f"Realized PnL: {result.realized_pnl}")
+    print(f"Unrealized PnL: {result.unrealized_pnl}")
+    print(f"Num trades: {result.num_trades}")
+
+    buy_idx = result.buy_indices
+    sell_idx = result.sell_indices
 
     dpg.set_value(line_series_id, [[], []])
     dpg.configure_item(button_id, enabled=False)
@@ -120,20 +135,16 @@ with dpg.window(label="Simulation", width=700, height=800):
 
     # Initial data
     init_steps = dpg.get_value(input_steps_id)
-    init_prices = brownian_prices(data_cache, init_steps)
+    sim_source = SimulatedDataSource(data_cache, init_steps)
+    init_prices = sim_source.fetch()
     init_x = list(range(len(init_prices)))
+    
 
     # Line plot
     plot_path = dpg.add_plot(label="Simulated Path", height=260, width=-1)
     x_axis_path = dpg.add_plot_axis(dpg.mvXAxis, label="Step", parent=plot_path)
     y_axis_path = dpg.add_plot_axis(dpg.mvYAxis, label="Price", parent=plot_path)
     line_series_id = dpg.add_line_series([], [], label="Path", parent=y_axis_path)
-    
-    # Create theme for line color
-    with dpg.theme() as line_theme:
-        with dpg.theme_component(dpg.mvLineSeries):
-            dpg.add_theme_color(dpg.mvPlotCol_Line, (0, 255, 0), category=dpg.mvThemeCat_Plots)  # Green (R, G, B)
-    dpg.bind_item_theme(line_series_id, line_theme)
 
     # Disable auto-fit; we'll control limits
     dpg.configure_item(y_axis_path, auto_fit=False)
@@ -143,11 +154,6 @@ with dpg.window(label="Simulation", width=700, height=800):
     profit_x_axis = dpg.add_plot_axis(dpg.mvXAxis, label="Step", parent=profit_plot)
     profit_y_axis = dpg.add_plot_axis(dpg.mvYAxis, label="Profit", parent=profit_plot)
     profit_series_id = dpg.add_bar_series([], [], label="Profit", parent=profit_y_axis)
-
-    #CHange parameters for SMA
-    dpg.add_text("SMA Parameters")
-    input_short_window_id = dpg.add_input_int(label="Short Window", default_value=7, min_value=1, max_value=100)
-    input_long_window_id = dpg.add_input_int(label="Long Window", default_value=28, min_value=1, max_value=100)
 
     # Button: pass IDs via user_data
     dpg.add_button(
@@ -162,8 +168,6 @@ with dpg.window(label="Simulation", width=700, height=800):
             "profit_series_id": profit_series_id,
             "profit_y_axis": profit_y_axis,
             "profit_x_axis": profit_x_axis,
-            "short_window": input_short_window_id,
-            "long_window": input_long_window_id
         }
     )
 
@@ -190,7 +194,17 @@ with dpg.window(label="SMA", pos=(700+900+10, 0), width=900, height=300):
     sma_x_axis_path = dpg.add_plot_axis(dpg.mvXAxis, label="Time", parent=sma_plot_path)
     sma_y_axis_path = dpg.add_plot_axis(dpg.mvYAxis, label="Price", parent=sma_plot_path)
 
-    profit, buy_idx, buy_prices, sell_idx, sell_prices = sma(data_cache, short_window=7, long_window=28)
+    # Run strategy using engine
+    historic_result = engine.get_strategy("SMA_Historic").run(data_cache)
+    profit = historic_result.total_pnl
+    buy_idx = historic_result.buy_indices
+    buy_prices = historic_result.buy_prices
+    sell_idx = historic_result.sell_indices
+    sell_prices = historic_result.sell_prices
+    print(f"Realized PnL: {historic_result.realized_pnl}")
+    print(f"Unrealized PnL: {historic_result.unrealized_pnl}")
+    print(f"Num trades: {historic_result.num_trades}")
+
 
     sma_x = list(range(len(data_cache)))
     # Build per-step realized PnL at sell steps using paired trades
