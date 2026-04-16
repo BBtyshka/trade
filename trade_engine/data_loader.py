@@ -25,10 +25,10 @@ class DataLoader:
             self._cache[ticker] = df
         return self._cache[ticker]
     
-    def load_prices(self, ticker: str) -> pd.Series:
-        """Load mid prices for a ticker as pandas Series with datetime index."""
+    def load_prices(self, ticker: str) -> pd.DataFrame:
+        """Load mid prices for a ticker as pandas DataFrame with datetime index."""
         df = self.load(ticker)
-        return df["Mid"]
+        return df
     
     def load_multiple(self, tickers: List[str]) -> Dict[str, pd.DataFrame]:
         """Load data for multiple tickers."""

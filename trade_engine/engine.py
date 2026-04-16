@@ -244,10 +244,10 @@ class Engine:
             
             for name, strategy in self._strategies.items():
                 # Get signals from strategy
-                signals = strategy.generate_signals(prices)
+                signals = strategy.generate_signals(prices, self.capital)
                 
                 # Process signals into trades with SL/TP
-                trades = self._process_signals(signals, prices)
+                trades = self._process_signals(signals, prices["Close"])
                 
                 # Build result
                 result = BacktestResult(
@@ -255,7 +255,7 @@ class Engine:
                     strategy_name=name,
                     trades=trades,
                     signals=signals,
-                    prices=prices
+                    prices=prices["Close"]
                 )
                 self.capital += result.total_pnl
                 result.build_equity_curve()
@@ -282,10 +282,10 @@ class Engine:
         strategy = self._strategies[strategy_name]
         
         # Get signals from strategy
-        signals = strategy.generate_signals(prices)
+        signals = strategy.generate_signals(prices, self.capital)
         
         # Process signals into trades with SL/TP
-        trades = self._process_signals(signals, prices)
+        trades = self._process_signals(signals, prices["Close"])
         
         # Build result
         result = BacktestResult(
@@ -293,7 +293,7 @@ class Engine:
             strategy_name=strategy_name,
             trades=trades,
             signals=signals,
-            prices=prices
+            prices=prices["Close"]
         )
         result.build_equity_curve()
         

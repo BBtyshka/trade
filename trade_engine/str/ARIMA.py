@@ -50,7 +50,7 @@ class ARIMAStrategy(Strategy):
             forecast = self.fitted_model.forecast(steps=steps)
         return forecast
     
-    def generate_signals(self, prices: pd.Series) -> List[Signal]:
+    def generate_signals(self, prices_df: pd.DataFrame, capital:float) -> List[Signal]:
         """
         Generate trading signals based on ARIMA model predictions.
         
@@ -60,6 +60,7 @@ class ARIMAStrategy(Strategy):
         Returns:
         List[Signal]: A list of generated trading signals.
         """
+        prices = prices_df['Mid']
         if len(prices) < self.train_points:
             raise ValueError("Not enough data points to fit the model.")
         

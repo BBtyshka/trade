@@ -15,9 +15,9 @@ from Simulations.objects import (
 
 # Initialize Engine
 engine = TradingEngine()
-engine.set_data_source(YFinanceDataSource("MSFT", period="1y", interval="1h"))
+engine.set_data_source(YFinanceDataSource("BTC-USD", period="1y", interval="1h"))
 engine.add_strategy(SMAStrategy(short_window=3, long_window=9), name="SMA_Sim")
-engine.add_strategy(SMAStrategy(short_window=7, long_window=28), name="SMA_Historic")
+engine.add_strategy(SMAStrategy(short_window=2, long_window=4), name="SMA_Historic")
 
 # Cache data once
 data_cache = engine.load_data()

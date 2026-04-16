@@ -20,9 +20,10 @@ class SMAStrategy(Strategy):
         self.short_window = short_window
         self.long_window = long_window
     
-    def generate_signals(self, prices: pd.Series) -> List[Signal]:
+    def generate_signals(self, prices_df: pd.DataFrame, capital:float) -> List[Signal]:
         """Generate trading signals from price series."""
         # Calculate SMAs using pandas rolling
+        prices = prices_df['Mid']
         short_sma = prices.rolling(window=self.short_window).mean()
         long_sma = prices.rolling(window=self.long_window).mean()
         

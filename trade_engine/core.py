@@ -34,6 +34,8 @@ class Signal:
     side: Side
     price: float
     quantity: float = 1.0
+    stop_loss: Optional[float] = None  # Add this line
+    take_profit: Optional[float] = None # Optional: for take-profit levels
 
 
 @dataclass
@@ -170,7 +172,7 @@ class Strategy(ABC):
         self.name = name
     
     @abstractmethod
-    def generate_signals(self, prices: pd.Series) -> List[Signal]:
+    def generate_signals(self, prices: pd.DataFrame, balance: float) -> List[Signal]:
         """Generate trading signals from price data.
         
         Returns a list of Signal objects indicating when to buy/sell.
